@@ -32,6 +32,7 @@ class BaseController:
         self.track_width = rospy.get_param('/track_width')
         self.wheel_radius = rospy.get_param('/wheel_radius')
 
+        self.dt = 1 / rospy.get_param('/control_loop_frequency')
         self.kp = rospy.get_param('/kp')
         self.ki = rospy.get_param('/ki')
         self.kd = rospy.get_param('/kd')
@@ -68,6 +69,12 @@ class BaseController:
         self.desired_left_motor_velocity = 0
         self.desired_right_motor_velocity = 0
 
+        self.prev_left_motor_velocity_error = 0
+        self.prev_right_motor_velocity_error = 0
+
+        self.left_motor_velocity_error_integral = 0
+        self.right_motor_velocity_error_integral = 0
+
     def __del__(self):
         self.left_motor_pwm.stop()
         self.right_motor_pwm.stop()
@@ -92,8 +99,6 @@ class BaseController:
             self.right_encoder_pulse_count -= 1
 
     def update_motor_velocities(self):
-        dt = 1 / rospy.get_param('/control_loop_frequency')
-
         lepc = self.left_encoder_pulse_count
         repc = self.right_encoder_pulse_count
         ppr = self.pulses_per_revolution
@@ -102,8 +107,8 @@ class BaseController:
         lwr = lepc / (ppr * gr)
         rwr = repc / (ppr * gr)
 
-        self.left_motor_velocity = (2 * np.pi * lwr) / dt
-        self.right_motor_velocity = (2 * np.pi * rwr) / dt
+        self.left_motor_velocity = (2 * np.pi * lwr) / self.dt
+        self.right_motor_velocity = (2 * np.pi * rwr) / self.dt
 
         self.left_encoder_pulse_count = 0
         self.right_encoder_pulse_count = 0
@@ -117,16 +122,7 @@ class BaseController:
         self.desired_left_motor_velocity = (v - w * d) / r
         self.desired_right_motor_velocity = (v + w * d) / r
 
-    def control_loop(self):
-        self.update_motor_velocities()
-
-        # TODO: Implement a PID controller to determine the PWM duty cycle for each motor
-        left_motor_velocity_error = self.desired_left_motor_velocity - self.left_motor_velocity
-        right_motor_velocity_error = self.desired_right_motor_velocity - self.right_motor_velocity
-
-        left_control_signal = self.kp * left_motor_velocity_error
-        right_control_signal = self.kp * right_motor_velocity_error
-
+    def update_motor_directions(self, left_control_signal, right_control_signal):
         if left_control_signal > 0:
             GPIO.output(self.left_motor_direction_a, GPIO.HIGH)
             GPIO.output(self.left_motor_direction_b, GPIO.LOW)
@@ -140,6 +136,34 @@ class BaseController:
         else:
             GPIO.output(self.right_motor_direction_a, GPIO.LOW)
             GPIO.output(self.right_motor_direction_b, GPIO.HIGH)
+
+    def calculate_control_signals(self):
+        left_motor_velocity_error = self.desired_left_motor_velocity - self.left_motor_velocity
+        right_motor_velocity_error = self.desired_right_motor_velocity - self.right_motor_velocity
+
+        self.left_motor_velocity_error_integral += left_motor_velocity_error * self.dt
+        self.right_motor_velocity_error_integral += right_motor_velocity_error * self.dt
+
+        left_motor_velocity_error_derivative = (left_motor_velocity_error - self.prev_left_motor_velocity_error) / self.dt
+        right_motor_velocity_error_derivative = (right_motor_velocity_error - self.prev_right_motor_velocity_error) / self.dt
+        self.prev_left_motor_velocity_error = left_motor_velocity_error
+        self.prev_right_motor_velocity_error = right_motor_velocity_error
+
+        left_control_signal = self.kp * left_motor_velocity_error \
+                            + self.ki * self.left_motor_velocity_error_integral \
+                            + self.kd * left_motor_velocity_error_derivative
+
+        right_control_signal = self.kp * right_motor_velocity_error \
+                             + self.ki * self.right_motor_velocity_error_integral \
+                             + self.kd * right_motor_velocity_error_derivative
+
+        return left_control_signal, right_control_signal
+
+    def control_loop(self):
+        self.update_motor_velocities()
+
+        left_control_signal, right_control_signal = self.calculate_control_signals()
+        self.update_motor_directions(left_control_signal, right_control_signal)
 
         left_control_signal = np.clip(abs(left_control_signal), 0, 100)
         right_control_signal = np.clip(abs(right_control_signal), 0, 100)
