@@ -1,5 +1,6 @@
 left_motor_pwm: 13
 right_motor_pwm: 12
+motor_pwm_frequency: 1000
 
 left_motor_direction_a: 16
 left_motor_direction_b: 26
@@ -13,12 +14,10 @@ right_encoder_channel_b: 23
 
 pulses_per_revolution: 11
 gearbox_reduction_ratio: 46
-
-track_width: 0.2185
 wheel_radius: 0.0335
+track_width: 0.2185
 
 control_loop_frequency: 50
-
 kp: 1.0
 ki: 0.0
 kd: 0.0
