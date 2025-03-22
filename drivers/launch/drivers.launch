@@ -1,0 +1,4 @@
+<launch>
+    <rosparam command="load" file="$(find drivers)/config/base_controller.yaml" />
+    <node name="base_controller" pkg="drivers" type="base_controller.py" output="screen" />
+</launch>

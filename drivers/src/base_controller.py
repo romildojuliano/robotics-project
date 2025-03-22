@@ -157,8 +157,8 @@ class BaseController:
         left_control_signal, right_control_signal = self.calculate_control_signals()
         self.update_motor_directions(left_control_signal, right_control_signal)
 
-        left_control_signal = np.clip(abs(left_control_signal), 0, 100)
-        right_control_signal = np.clip(abs(right_control_signal), 0, 100)
+        left_control_signal = min(abs(left_control_signal), 100)
+        right_control_signal = min(abs(right_control_signal), 100)
 
         self.left_motor_pwm.ChangeDutyCycle(left_control_signal)
         self.right_motor_pwm.ChangeDutyCycle(right_control_signal)

@@ -17,7 +17,7 @@ gearbox_reduction_ratio: 46
 wheel_radius: 0.0335
 track_width: 0.2185
 
-control_loop_frequency: 50
+control_loop_frequency: 10
 kp: 1.0
 ki: 0.0
 kd: 0.0
