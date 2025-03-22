@@ -75,17 +75,6 @@ class BaseController:
         self.left_motor_velocity_error_integral = 0
         self.right_motor_velocity_error_integral = 0
 
-    def __del__(self):
-        self.left_motor_pwm.stop()
-        self.right_motor_pwm.stop()
-
-        GPIO.output(self.left_motor_direction_a, GPIO.LOW)
-        GPIO.output(self.left_motor_direction_b, GPIO.LOW)
-        GPIO.output(self.right_motor_direction_a, GPIO.LOW)
-        GPIO.output(self.right_motor_direction_b, GPIO.LOW)
-
-        GPIO.cleanup()
-
     def left_encoder_callback(self, channel):
         if GPIO.input(self.left_encoder_channel_b) == GPIO.HIGH:
             self.left_encoder_pulse_count += 1
@@ -144,8 +133,11 @@ class BaseController:
         self.left_motor_velocity_error_integral += left_motor_velocity_error * self.dt
         self.right_motor_velocity_error_integral += right_motor_velocity_error * self.dt
 
-        left_motor_velocity_error_derivative = (left_motor_velocity_error - self.prev_left_motor_velocity_error) / self.dt
-        right_motor_velocity_error_derivative = (right_motor_velocity_error - self.prev_right_motor_velocity_error) / self.dt
+        left_motor_velocity_error_diff = left_motor_velocity_error - self.prev_left_motor_velocity_error
+        left_motor_velocity_error_derivative = left_motor_velocity_error_diff / self.dt
+        right_motor_velocity_error_diff = right_motor_velocity_error - self.prev_right_motor_velocity_error
+        right_motor_velocity_error_derivative = right_motor_velocity_error_diff / self.dt
+
         self.prev_left_motor_velocity_error = left_motor_velocity_error
         self.prev_right_motor_velocity_error = right_motor_velocity_error
 
@@ -178,6 +170,9 @@ if __name__ == '__main__':
     base_controller = BaseController()
     base_controller_rate = rospy.Rate(rospy.get_param('/control_loop_frequency'))
 
-    while not rospy.is_shutdown():
-        base_controller.control_loop()
-        base_controller_rate.sleep()
+    try:
+        while not rospy.is_shutdown():
+            base_controller.control_loop()
+            base_controller_rate.sleep()
+    finally:
+        GPIO.cleanup()
