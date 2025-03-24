@@ -18,13 +18,14 @@ def camera_callback(req):
 
     if ret:
         try:
+            frame = cv2.flip(frame, -1)
             image = bridge.cv2_to_imgmsg(frame, encoding='bgr8')
             return CameraResponse(image)
         except CvBridgeError as e:
             rospy.logerr(e)
             return CameraResponse()
-    else:
-        return CameraResponse()
+
+    return CameraResponse()
 
 
 if __name__ == '__main__':

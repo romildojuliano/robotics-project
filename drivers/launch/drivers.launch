@@ -1,4 +1,7 @@
 <launch>
     <rosparam command="load" file="$(find drivers)/config/base_controller.yaml" />
     <node name="base_controller" pkg="drivers" type="base_controller.py" output="screen" />
+
+    <rosparam command="load" file="$(find drivers)/config/camera.yaml" />
+    <node name="camera" pkg="drivers" type="camera.py" output="screen" />
 </launch>
