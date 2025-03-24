@@ -9,6 +9,8 @@ project(drivers)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  sensor_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -58,6 +60,11 @@ find_package(catkin REQUIRED COMPONENTS
 #   Service2.srv
 # )
 
+add_service_files(
+  FILES
+  Camera.srv
+)
+
 ## Generate actions in the 'action' folder
 # add_action_files(
 #   FILES
@@ -70,6 +77,11 @@ find_package(catkin REQUIRED COMPONENTS
 #   DEPENDENCIES
 #   std_msgs  # Or other packages containing msgs
 # )
+
+generate_messages(
+  DEPENDENCIES
+  sensor_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -164,6 +176,7 @@ include_directories(
 
 catkin_install_python(PROGRAMS
   src/base_controller.py
+  src/camera.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
