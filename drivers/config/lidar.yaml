@@ -1,0 +1,15 @@
+port: "/dev/ydlidar"
+baudrate: 115200
+
+frame_id: "laser_frame"
+angle_min: -180.0
+angle_max: 180.0
+range_min: 0.1
+range_max: 16.0
+frequency: 10.0
+
+reversion: true
+auto_reconnect: true
+intensity: false
+
+publish_pointcloud: false
