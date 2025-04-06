@@ -9,6 +9,7 @@ project(drivers)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  trajectory_msgs
   sensor_msgs
   message_generation
 )
@@ -62,6 +63,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_service_files(
   FILES
+  ServoController.srv
   Camera.srv
 )
 
@@ -80,6 +82,7 @@ add_service_files(
 
 generate_messages(
   DEPENDENCIES
+  trajectory_msgs
   sensor_msgs
 )
 
@@ -176,6 +179,7 @@ include_directories(
 
 catkin_install_python(PROGRAMS
   src/base_controller.py
+  src/servo_controller.py
   src/camera.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

@@ -1,0 +1,4 @@
+servo_pwm: 19
+servo_pwm_frequency: 50
+pulse_width_variation_per_degree: 10
+neutral_position_duty_cycle: 7.5
