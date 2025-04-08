@@ -5,6 +5,9 @@
     <rosparam command="load" file="$(find drivers)/config/servo_controller.yaml" />
     <node name="servo_controller" pkg="drivers" type="servo_controller.py" output="screen" />
 
+    <rosparam command="load" file="$(find drivers)/config/lidar.yaml" />
+    <node name="lidar" pkg="drivers" type="lidar.py" output="screen" />
+
     <rosparam command="load" file="$(find drivers)/config/camera.yaml" />
     <node name="camera" pkg="drivers" type="camera.py" output="screen" />
 </launch>

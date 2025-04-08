@@ -1,0 +1,21 @@
+port: '/dev/ydlidar'
+baudrate: 115200
+
+sample_rate: 5
+abnormal_check_count: 4
+
+fixed_resolution: True
+auto_reconnect: True
+reversion: True
+inverted: True
+single_channel: False
+intensity: True
+support_motor_dtr_ctrl: False
+
+min_angle: -180.0
+max_angle: 180.0
+min_range: 0.1
+max_range: 16.0
+scan_frequency: 10.0
+
+angle_offset: -0.67 # 58° cw
