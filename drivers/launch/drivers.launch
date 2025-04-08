@@ -10,5 +10,4 @@
 
     <rosparam command="load" file="$(find drivers)/config/camera.yaml" />
     <node name="camera" pkg="drivers" type="camera.py" output="screen" />
-
 </launch>

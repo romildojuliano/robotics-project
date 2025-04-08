@@ -33,12 +33,11 @@ if __name__ == '__main__':
     laser.setlidaropt(ydlidar.LidarPropMinRange, rospy.get_param('/min_range'))
     laser.setlidaropt(ydlidar.LidarPropMaxRange, rospy.get_param('/max_range'))
     laser.setlidaropt(ydlidar.LidarPropScanFrequency, rospy.get_param('/scan_frequency'))
+    angle_offset = rospy.get_param('/angle_offset')
 
     ret = laser.initialize()
     ret = laser.turnOn()
 
-    angle_offset = rospy.get_param('/angle_offset')
-    
     try:
         while not rospy.is_shutdown():
             scan = ydlidar.LaserScan()
