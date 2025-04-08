@@ -1,3 +1,13 @@
-device: '/dev/video0'
+# Camera device parameters
+device: "/dev/video0"
 width: 640
 height: 480
+
+# Color detection parameters
+min_pixels: 100
+verde_inf: [35, 40, 40]
+verde_sup: [85, 255, 255]
+vermelho_inf1: [0, 100, 100]
+vermelho_sup1: [10, 255, 255]
+vermelho_inf2: [170, 100, 100]
+vermelho_sup2: [180, 255, 255]

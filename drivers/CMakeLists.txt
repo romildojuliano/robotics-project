@@ -180,6 +180,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   src/base_controller.py
   src/servo_controller.py
+  src/lidar.py
   src/camera.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
