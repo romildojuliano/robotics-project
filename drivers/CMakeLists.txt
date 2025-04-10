@@ -9,6 +9,7 @@ project(drivers)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  geometry_msgs
   trajectory_msgs
   sensor_msgs
   message_generation
@@ -82,6 +83,7 @@ add_service_files(
 
 generate_messages(
   DEPENDENCIES
+  geometry_msgs
   trajectory_msgs
   sensor_msgs
 )

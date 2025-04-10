@@ -1,0 +1,5 @@
+<launch>
+    <rosparam command="load" file="$(find maze)/config/vector_field_histogram.yaml" />
+    <node name="vector_field_histogram" pkg="maze" type="vector_field_histogram.py" output="screen" />
+    <node name="maze_robot" pkg="maze" type="main.py" output="screen" />
+</launch>

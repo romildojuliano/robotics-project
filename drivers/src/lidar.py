@@ -33,7 +33,6 @@ if __name__ == '__main__':
     laser.setlidaropt(ydlidar.LidarPropMinRange, rospy.get_param('/min_range'))
     laser.setlidaropt(ydlidar.LidarPropMaxRange, rospy.get_param('/max_range'))
     laser.setlidaropt(ydlidar.LidarPropScanFrequency, rospy.get_param('/scan_frequency'))
-    angle_offset = rospy.get_param('/angle_offset')
 
     ret = laser.initialize()
     ret = laser.turnOn()
@@ -47,16 +46,34 @@ if __name__ == '__main__':
 
                 if r:
                     msg = LaserScan()
+
                     msg.header.stamp = rospy.Time.now()
+                    msg.header.frame_id = 'laser_frame'
+
                     msg.angle_min = scan.config.min_angle
                     msg.angle_max = scan.config.max_angle
                     msg.angle_increment = scan.config.angle_increment
-                    msg.time_increment = scan.config.time_increment
+
                     msg.scan_time = scan.config.scan_time
+                    msg.time_increment = scan.config.time_increment
+
                     msg.range_min = scan.config.min_range
                     msg.range_max = scan.config.max_range
-                    msg.ranges = [point.range for point in scan.points]
-                    msg.intensities = [point.intensity for point in scan.points]
+
+                    angle_max = scan.config.max_angle
+                    angle_min = scan.config.min_angle
+                    angle_increment = scan.config.angle_increment
+                    num_angles = int((angle_max - angle_min) / angle_increment) + 1
+
+                    msg.ranges = [np.inf] * num_angles
+                    msg.intensities = [0.0] * num_angles
+
+                    for point in scan.points:
+                        index = int(np.ceil((point.angle - scan.config.min_angle) / scan.config.angle_increment))
+                        if (index >= 0 and index < 25 + num_angles // 2) or (index > num_angles - 25 and index < num_angles):
+                            if point.range >= scan.config.min_range:
+                                msg.ranges[num_angles - index] = point.range
+                                msg.intensities[num_angles - index] = point.intensity
                     lidar_publisher.publish(msg)
 
             lidar_rate.sleep()

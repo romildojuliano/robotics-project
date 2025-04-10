@@ -1,0 +1,10 @@
+num_angular_sectors: 12
+angle_offset: -1.1
+
+lower_range_threshold: 0.1
+upper_range_threshold: 0.5
+
+linear_velocity: 0.3
+angular_velocity: -0.6
+
+update_frequency: 20.0
