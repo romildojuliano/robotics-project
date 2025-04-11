@@ -7,7 +7,7 @@ from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from drivers.srv import Camera, ServoController
-import subprocess
+import time
 
 class State(Enum):
     NAVIGATE = 1
@@ -28,9 +28,11 @@ class MazeRobot:
         self.best_sector = None
         self.num_angular_sectors = rospy.get_param('/num_angular_sectors')
         
+        self.cmd_vel_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+
         # We'll subscribe to the cmd_vel topic that VFH publishes to
         # and use that to track what VFH is doing
-        self.cmd_vel_subscriber = rospy.Subscriber('cmd_vel', Twist, queue_size=1)
+        self.cmd_vel_subscriber = rospy.Subscriber('cmd_vel', Twist, self.main_loop, queue_size=1)
         
         # Service clients
         rospy.wait_for_service('camera')
@@ -66,101 +68,96 @@ class MazeRobot:
         except rospy.ServiceException as e:
             rospy.logerr(f"Servo service call failed: {e}")
 
-    def run(self):
-        previous_state = None
+    def main_loop(self, msg):
+        print(msg)
+        print(self.state)
+        if self.state == State.NAVIGATE:
+            # Let VFH handle navigation, we just monitor
+                # Stop the robot
+                if msg == self.stop_msg:
+                    print('stopped')
+                    self.state = State.STOPPED
+                # Otherwise, VFH is already handling navigation through its own cmd_vel publishing
+        elif self.state == State.STOPPED:
+            # Rotate servo to pi/2
+            self.set_servo_position(np.pi/2)
+            self.state = State.SCAN_COLOR
         
-        while not rospy.is_shutdown():
-            # Handle state transitions with delay
-            if self.state != previous_state:
-                rospy.loginfo(f"State transition: {previous_state} -> {self.state}")
-                previous_state = self.state
-                
-            if self.state == State.NAVIGATE:
-                # Let VFH handle navigation, we just monitor
-                    # Stop the robot
-                    print(self.cmd_vel_subscriber.msg)
-                    print(self.stop_msg)
-                    if self.cmd_vel_subscriber == self.stop_msg:
-                        self.state = State.STOPPED
-                    # Otherwise, VFH is already handling navigation through its own cmd_vel publishing
-            
-            elif self.state == State.STOPPED:
-                # Rotate servo to pi/2
-                self.set_servo_position(np.pi/2)
-                self.state = State.SCAN_COLOR
-            
-            elif self.state == State.SCAN_COLOR:
-                # Check color with camera
-                try:
+        elif self.state == State.SCAN_COLOR:
+            # Check color with camera
+            try:
+                resp = self.camera_service()
+                if resp.result == "verde":
+                    rospy.loginfo("Green detected, moving in that direction")
+                    self.state = State.MOVE_DIRECTION
+                elif resp.result == "vermelho":
+                    rospy.loginfo("Red detected, looking to other side")
+                    # Rotate servo to -pi/2
+                    self.set_servo_position(-np.pi/2)
+                    time.sleep(1)
+                    # Check other side
                     resp = self.camera_service()
                     if resp.result == "verde":
-                        rospy.loginfo("Green detected, moving in that direction")
+                        rospy.loginfo("Green detected on other side")
                         self.state = State.MOVE_DIRECTION
-                    elif resp.result == "vermelho":
-                        rospy.loginfo("Red detected, looking to other side")
-                        # Rotate servo to -pi/2
-                        self.set_servo_position(-np.pi/2)
                         
-                        # Check other side
-                        resp = self.camera_service()
-                        if resp.result == "verde":
-                            rospy.loginfo("Green detected on other side")
-                            self.state = State.MOVE_DIRECTION
-                        else:
-                            # Reset servo to forward position
-                            self.set_servo_position(0.0)
-                            # Reset to navigation if no green found
-                            self.state = State.NAVIGATE
                     else:
                         # Reset servo to forward position
                         self.set_servo_position(0.0)
-                        # No color detected, go back to navigation
-                        rospy.loginfo("No color detected, returning to navigation")
+                        # Reset to navigation if no green found
                         self.state = State.NAVIGATE
-                except rospy.ServiceException as e:
-                    rospy.logerr(f"Camera service call failed: {e}")
+                else:
                     # Reset servo to forward position
                     self.set_servo_position(0.0)
+                    # No color detected, go back to navigation
+                    rospy.loginfo("No color detected, returning to navigation")
                     self.state = State.NAVIGATE
+            except rospy.ServiceException as e:
+                rospy.logerr(f"Camera service call failed: {e}")
+                # Reset servo to forward position
+                self.set_servo_position(0.0)
+                self.state = State.NAVIGATE
+        
+        elif self.state == State.MOVE_DIRECTION:
+            # Store the current servo position to know which direction to turn
+            # Store the current servo position
+            servo_position = np.pi/2  # Default to right
             
-            elif self.state == State.MOVE_DIRECTION:
-                # Store the current servo position to know which direction to turn
-                # Store the current servo position
-                servo_position = np.pi/2  # Default to right
-                
-                # Check which direction we scanned last
-                if hasattr(self, 'last_servo_position'):
-                    servo_position = self.last_servo_position
-                
-                # First turn in the direction the camera is pointing
-                turn_msg = Twist()
-                
-                if servo_position > 0:  # Camera pointing right, turn right
-                    rospy.loginfo("Turning right toward green marker")
-                    turn_msg.angular.z = -self.angular_velocity  # Negative for right turn
-                else:  # Camera pointing left, turn left
-                    rospy.loginfo("Turning left toward green marker")
-                    turn_msg.angular.z = self.angular_velocity   # Positive for left turn
-                
-                # Turn for a fixed duration - enough to make approximately a 90-degree turn
-                self.cmd_vel_pub.publish(turn_msg)
-                
-                # Then move forward
-                move_msg = Twist()
-                move_msg.linear.x = self.linear_velocity
-                self.cmd_vel_pub.publish(move_msg)
-                rospy.loginfo("Moving forward")
-                
-                # Stop the robot
-                self.cmd_vel_pub.publish(self.stop_msg)
-                
-                rospy.loginfo("Goal reached - shutting down")
-                rospy.signal_shutdown("Goal reached")
+            # Check which direction we scanned last
+            if hasattr(self, 'last_servo_position'):
+                servo_position = self.last_servo_position
+            
+            # First turn in the direction the camera is pointing
+            turn_msg = Twist()
+            
+            if servo_position > 0:  # Camera pointing right, turn right
+                rospy.loginfo("Turning right toward green marker")
+                turn_msg.angular.z = -self.angular_velocity  # Negative for right turn
+            else:  # Camera pointing left, turn left
+                rospy.loginfo("Turning left toward green marker")
+                turn_msg.angular.z = self.angular_velocity   # Positive for left turn
+            
+            # Turn for a fixed duration - enough to make approximately a 90-degree turn
+            self.cmd_vel_pub.publish(turn_msg)
+            
+            # Then move forward
+            move_msg = Twist()
+            move_msg.linear.x = self.linear_velocity
+            self.cmd_vel_pub.publish(move_msg)
+            rospy.loginfo("Moving forward")
+            
+            # Stop the robot
+            self.cmd_vel_pub.publish(self.stop_msg)
+            
+            rospy.loginfo("Goal reached - shutting down")
+            rospy.signal_shutdown("Goal reached")
     
 
 if __name__ == '__main__':
-    try:
-        robot = MazeRobot()
-        robot.run()
-    except rospy.ROSInterruptException:
-        pass
+    robot = MazeRobot()
+    
+    while not rospy.is_shutdown():
+        try:
+            rospy.spin()
+        except:
+            break

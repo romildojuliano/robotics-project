@@ -4,7 +4,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
-import sys
+import time
 
 class VectorFieldHistogram:
     def __init__(self):
@@ -45,9 +45,7 @@ class VectorFieldHistogram:
                     histogram[sector] += 1
             angle += msg.angle_increment
 
-        # print(histogram)
         histogram = histogram >= 5
-        # print(histogram)
         best_sector = None
         min_distance = np.inf
 
@@ -56,16 +54,11 @@ class VectorFieldHistogram:
         for i, sector_points in enumerate(histogram):
             if sector_points == 0:
                 subset_sectors.append(i)
-                distance = abs(i - self.num_angular_sectors // 2)
-                if distance < min_distance:
-                    best_sector = i
-                    min_distance = distance
 
         msg = Twist()
         
         if not self.stop_flag and len(subset_sectors) > 1:
             best_sector = subset_sectors[len(subset_sectors) // 2]
-            # print(f"Best sector: {best_sector}")
 
             msg.linear.x = self.linear_velocity
             center_sector = self.num_angular_sectors // 2
@@ -80,6 +73,10 @@ class VectorFieldHistogram:
                 msg.angular.z = self.angular_velocity
         else:
             self.stop_flag = True
+            self.cmd_vel_publisher.publish(msg)
+            # rospy.signal_shutdown('Dead-end reached.')            
+            # time.sleep(2)
+            
         self.cmd_vel_publisher.publish(msg)
 
 
